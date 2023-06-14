@@ -1,0 +1,8 @@
+aiohttp==3.8.4
+google-cloud-storage==2.1.0
+moviepy==1.0.3
+numpy==1.24.3
+opencv-python-headless==4.7.0.72
+python-dotenv==0.19.2
+replicate==0.0.1a15
+requests==2.29.0
