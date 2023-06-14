@@ -79,3 +79,17 @@ def generate_download_signed_url_v4(bucket_name, blob_name):
     )
 
     return url
+
+
+def has_audio_stream(filepath):
+    # Run ffprobe to get the stream information
+    command = ['ffprobe', '-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=codec_name', '-of', 'default=noprint_wrappers=1:nokey=1', filepath]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    # If the command returns a non-zero exit code, there was an error
+    if result.returncode != 0:
+        raise ValueError(f"ffprobe command failed with error: {result.stderr.decode('utf-8')}")
+    
+    # Check if the output contains a codec name (indicating an audio stream)
+    output = result.stdout.decode('utf-8').strip()
+    return bool(output)

@@ -11,6 +11,7 @@ import cv2
 import asyncio
 import aiohttp
 import re
+import logging
 from concurrent.futures import ThreadPoolExecutor
 import shlex
 import itertools
@@ -36,6 +37,8 @@ response = requests.post('https://api.dolby.io/v1/auth/token', data=payload, aut
 body = json.loads(response.content)
 access_token = body['access_token']
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_video_duration(chunk_filename):
     cmd = f"ffprobe -v quiet -print_format json -show_format -show_streams -i {chunk_filename}"
@@ -144,6 +147,9 @@ async def write_frames_to_output(queue, out, total_frames, logger):
     frame_buffer = {}
 
     while written_frames < total_frames:
+        print('written_frames: ' + str(written_frames))
+        print('total_frames: ' + str(total_frames))
+
         filename, upgraded_frame = await queue.get()
         print(f'Got frame from queue, queue size: {queue.qsize()}, frame buffer size: {len(frame_buffer)}')
         try:
@@ -166,8 +172,11 @@ async def write_frames_to_output(queue, out, total_frames, logger):
             out.write(frame_buffer[written_frames])
             logger.info(f"Frame written to output: {filename}")
             del frame_buffer[written_frames]
-            written_frames += 1
-            print(f'Written_frames count: {written_frames}')
+            # written_frames += 1
+            # print(f'Written_frames count: {written_frames}')
+
+        written_frames += 1
+        print(f'Written_frames count: {written_frames}')
 
         print(f'End of while loop, frame_buffer size: {len(frame_buffer)}')
 
@@ -347,8 +356,6 @@ async def finish_upgrade_frame(image, filename):
             image_data = np.frombuffer(response.content, dtype=np.uint8)
             upgraded_frame = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
             
-            print('Memory usage: ' + str(process.memory_info().rss * 0.000001) + ' MB')
-
             # Free up memory by deleting response and image_data, and running the garbage collector
             del response
             del image_data
@@ -482,7 +489,8 @@ async def split_video(input_filename, chunk_duration, output_filename, duration_
             os.remove(chunk_filename)
             os.remove(processed_chunk_filename)
 
-        except:
+        except Exception as e:
+            print(e)
             break
 
     return chunk_count
@@ -532,8 +540,6 @@ def sync_upgrade_audio_video_wrapper(input_filename, output_filename):
 
     with VideoFileClip(input_filename) as video:
         duration_seconds = video.duration
-
-    download_from_gs(BUCKET, input_filename, input_filename)
     asyncio.run(async_upgrade_audio_video_wrapper(input_filename, output_filename, duration_seconds))
     gc.collect()
 
